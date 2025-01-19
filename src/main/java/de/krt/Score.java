@@ -1,6 +1,6 @@
 package de.krt;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
 import java.time.LocalTime;
 
 public class Score {
@@ -9,9 +9,9 @@ public class Score {
     private String mode;
     private String map;
     private String rank;
-    private long time;
+    private int time;
 
-    public Score(String handle, String season, String mode, String map, String rank, long time){
+    public Score(String handle, String season, String mode, String map, String rank, int time){
         this.handle = handle;
         this.season = season;
         this.mode = mode;
@@ -20,8 +20,13 @@ public class Score {
         this.time = time;
     }
 
-    public static long getMillies(String time){
+    public static int getMillies(String time){
         return LocalTime.parse(time).toSecondOfDay();
+    }
+
+    public static String getTimeFormat(int time){
+        Duration duration = Duration.ofSeconds(time);
+        return String.format("%02d:%02d:%02d", duration.toHoursPart(), duration.toMinutesPart(), duration.toSecondsPart());
     }
 
     public String getHandle() {
@@ -64,11 +69,18 @@ public class Score {
         this.rank = rank;
     }
 
-    public long getTime() {
+    public int getTime() {
         return time;
     }
 
-    public void setTime(long time) {
+    public void setTime(int time) {
         this.time = time;
+    }
+
+    public void adjustRank(String rank, int time){
+        double newRank = ((Double.parseDouble(getRank()) * getTime()) + (Double.parseDouble(rank) * time))
+                / (getTime() + time);
+        setRank(String.valueOf(newRank));
+        setTime(getTime() + time);
     }
 }

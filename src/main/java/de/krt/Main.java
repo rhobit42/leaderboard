@@ -5,10 +5,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,18 +18,43 @@ public class Main {
     public static void main(String[] args) {
         //setup
         List<Score> scores = new ArrayList<>();
+        List<Score> aggregatedScores = new ArrayList<>();
         Map<String,List<String>> modesAndMAps = setupModeAndMaps();
 
-        //foreach mode and season
-        //Query Leaderboard
-        String season = "45";
-        String mode = "SB";
-        List<String> maps = modesAndMAps.get(mode);
-        for (String map : maps) {
-            String response = getLeaderbordData(season, mode, map);
-            parseResponse(response, scores, mode, map, season);
+        //TODO: foreach season
+        String season = "44";
+        for (String mode : modesAndMAps.keySet()) {
+            List<Score> tempScores = new ArrayList<>();
+            List<Score> tempAggregatedScores = new ArrayList<>();
+            List<String> maps = modesAndMAps.get(mode);
+            for (String map : maps) {
+                String response = getLeaderbordData(season, mode, map);
+                parseResponse(response, tempScores, mode, map, season);
+            }
+            aggregateScores(tempScores, tempAggregatedScores, mode + "-ALL");
+            scores.addAll(tempScores);
+            aggregatedScores.addAll(tempAggregatedScores);
         }
-        writeToCSV(scores);
+
+        writeToCSV(aggregatedScores, "lb_aggregate");
+        writeToCSV(scores, "lb_full");
+    }
+
+    private static void aggregateScores(List<Score> scores, List<Score> aggregateScores, String modeAggregate) {
+        Map<String, Score> aggregation = new HashMap<>();
+        for (Score score : scores){
+            if(aggregation.containsKey(score.getHandle())){
+                Score existingScore = aggregation.get(score.getHandle());
+                existingScore.adjustRank(score.getRank(), score.getTime());
+            }
+            else {
+                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), modeAggregate, score.getRank(), score.getTime());
+                aggregation.put(score.getHandle(), newScore);
+            }
+        }
+        for(String handle : aggregation.keySet()) {
+            aggregateScores.add(aggregation.get(handle));
+        }
     }
 
     private static void parseResponse(String response, List<Score> scores, String mode, String map, String season) {
@@ -44,21 +66,25 @@ public class Main {
             JSONObject entry = resultSet.getJSONObject(i);
             String handle = entry.getString("nickname");
             String rank = entry.getString("rank");
-            long time = Score.getMillies(entry.getString("flight_time"));
+            int time = Score.getMillies(entry.getString("flight_time"));
             scores.add(new Score(handle, season, mode, map, rank, time));
         }
     }
 
-    private static void writeToCSV(List<Score> scores) {
+    private static void writeToCSV(List<Score> scores, String filename) {
         try {
-            FileWriter csvWriter = new FileWriter("leaderboard.csv");
+            FileWriter csvWriter = new FileWriter(filename + ".csv");
             csvWriter.append("season");
             csvWriter.append(",");
-            csvWriter.append("ranking");
+            csvWriter.append("mode");
+            csvWriter.append(",");
+            csvWriter.append("map");
             csvWriter.append(",");
             csvWriter.append("handle");
             csvWriter.append(",");
             csvWriter.append("rank");
+            csvWriter.append(",");
+            csvWriter.append("time");
             csvWriter.append("\n");
 
             for (Score score : scores) {
@@ -66,9 +92,13 @@ public class Main {
                 csvWriter.append(",");
                 csvWriter.append(score.getMode());
                 csvWriter.append(",");
-                csvWriter.append(score.getHandle());
+                csvWriter.append(score.getMap());
                 csvWriter.append(",");
                 csvWriter.append(score.getHandle());
+                csvWriter.append(",");
+                csvWriter.append(score.getRank());
+                csvWriter.append(",");
+                csvWriter.append(Score.getTimeFormat(score.getTime()));
                 csvWriter.append("\n");
             }
 
@@ -82,10 +112,12 @@ public class Main {
     }
 
     private static Map<String,List<String>> setupModeAndMaps() {
-        Map<String,List<String>> modesAndMap = new HashMap<String, List<String>>();
+        Map<String,List<String>> modesAndMap = new HashMap<>();
 
         //Arena Commander Maps
-        List<String> maps = List.of("BROKEN-MOON", "DYING-STAR", "KAREAH", "JERICHO-STATION", "ARENA");
+        List<String> maps = List.of(
+                "BROKEN-MOON", "DYING-STAR", "KAREAH", "JERICHO-STATION", "ARENA"
+                );
         //DUEL
         modesAndMap.put("DL", maps);
         //Squadron Battle
@@ -125,9 +157,6 @@ public class Main {
                 byte[] input = payload.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
             }
-
-            int responseCode = conn.getResponseCode();
-            // Handle the response appropriately
 
             // Read the response
             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
