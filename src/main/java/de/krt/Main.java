@@ -19,23 +19,24 @@ public class Main {
         //setup
         List<Score> scores = new ArrayList<>();
         List<Score> aggregatedScores = new ArrayList<>();
-        Map<String,List<String>> modesAndMAps = setupModeAndMaps();
+        Map<String, List<String>> modesAndMAps = setupModeAndMaps();
 
         //TODO: foreach season
-        String season = "44";
-        for (String mode : modesAndMAps.keySet()) {
-            List<Score> tempScores = new ArrayList<>();
-            List<Score> tempAggregatedScores = new ArrayList<>();
-            List<String> maps = modesAndMAps.get(mode);
-            for (String map : maps) {
-                String response = getLeaderbordData(season, mode, map);
-                parseResponse(response, tempScores, mode, map, season);
+        for (int i = 40; i <= 45; i++) {
+            String season = String.valueOf(i);
+            for (String mode : modesAndMAps.keySet()) {
+                List<Score> tempScores = new ArrayList<>();
+                List<Score> tempAggregatedScores = new ArrayList<>();
+                List<String> maps = modesAndMAps.get(mode);
+                for (String map : maps) {
+                    String response = getLeaderbordData(season, mode, map);
+                    parseResponse(response, tempScores, mode, map, season);
+                }
+                aggregateScores(tempScores, tempAggregatedScores, mode + "-ALL");
+                scores.addAll(tempScores);
+                aggregatedScores.addAll(tempAggregatedScores);
             }
-            aggregateScores(tempScores, tempAggregatedScores, mode + "-ALL");
-            scores.addAll(tempScores);
-            aggregatedScores.addAll(tempAggregatedScores);
         }
-
         writeToCSV(aggregatedScores, "lb_aggregate");
         writeToCSV(scores, "lb_full");
     }
@@ -43,7 +44,7 @@ public class Main {
     private static void aggregateScores(List<Score> scores, List<Score> aggregateScores, String modeAggregate) {
         Map<String, Score> aggregation = new HashMap<>();
         for (Score score : scores){
-            if(aggregation.containsKey(score.getHandle())){
+            if(!score.isRacing() && aggregation.containsKey(score.getHandle())){
                 Score existingScore = aggregation.get(score.getHandle());
                 existingScore.adjustRank(score.getRank(), score.getTime());
             }
@@ -96,7 +97,7 @@ public class Main {
                 csvWriter.append(",");
                 csvWriter.append(score.getHandle());
                 csvWriter.append(",");
-                csvWriter.append(score.getRank());
+                csvWriter.append(score.getRank().replace(".",","));
                 csvWriter.append(",");
                 csvWriter.append(Score.getTimeFormat(score.getTime()));
                 csvWriter.append("\n");
@@ -115,9 +116,7 @@ public class Main {
         Map<String,List<String>> modesAndMap = new HashMap<>();
 
         //Arena Commander Maps
-        List<String> maps = List.of(
-                "BROKEN-MOON", "DYING-STAR", "KAREAH", "JERICHO-STATION", "ARENA"
-                );
+        List<String> maps = List.of("BROKEN-MOON", "DYING-STAR", "KAREAH", "JERICHO-STATION", "ARENA");
         //DUEL
         modesAndMap.put("DL", maps);
         //Squadron Battle
@@ -127,6 +126,13 @@ public class Main {
         //Pirate Swarm
         modesAndMap.put("PS", maps);
 
+        /**
+        //Racing Maps
+        //Classic Race
+        modesAndMap.put("CR", List.of("NHS-OLD-VANDERVAL","NHS-RIKKORD", "NHS-DEFFORD-LINK"));
+        //Grav Race
+        modesAndMap.put("GR", List.of("SNAKE-PIT","SNAKE-PIT-REVERSE", "CLIO-ISLANDS", "SHIFTING-SANDS", "RIVERS-EDGE"));
+        */
         return modesAndMap;
     }
 
