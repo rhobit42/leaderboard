@@ -21,7 +21,8 @@ public class Main {
         List<Score> aggregatedScores = new ArrayList<>();
         Map<String, List<String>> modesAndMAps = setupModeAndMaps();
 
-        //TODO: foreach season
+        //TODO: include racing
+        //TODO: include star marine
         for (int i = 40; i <= 45; i++) {
             String season = String.valueOf(i);
             for (String mode : modesAndMAps.keySet()) {
