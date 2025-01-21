@@ -15,20 +15,24 @@ public class Score {
     private int time;
     private final DecimalFormatSymbols symbols;
     private final DecimalFormat df;
+    public static int ERROR_VALUE = 999999999;
 
     public Score(String handle, String season, String mode, String map, String rank, int time){
         symbols = new DecimalFormatSymbols(Locale.getDefault());
         symbols.setDecimalSeparator('.');
         df = new DecimalFormat("#.00", symbols);
-        this.handle = handle;
-        this.season = season;
-        this.mode = mode;
-        this.map = map;
-        this.rank = df.format(Double.parseDouble(rank));
-        this.time = time;
+        setHandle(handle);
+        setSeason(season);
+        setMode(mode);
+        setMap(map);
+        setRank(df.format(Double.parseDouble(rank)));
+        setTime(time);
     }
 
     public static int getMillies(String time){
+        if (time.contains("-")){
+            return ERROR_VALUE;
+        }
         return LocalTime.parse(time).toSecondOfDay();
     }
 
@@ -90,9 +94,5 @@ public class Score {
                 / (getTime() + time);
         setRank(df.format(newRank));
         setTime(getTime() + time);
-    }
-
-    public boolean isRacing(){
-        return getMode().equals("CR") || getMode().equals("GR");
     }
 }
