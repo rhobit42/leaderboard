@@ -22,7 +22,8 @@ public class Main {
         Map<String, List<String>> modesAndMAps = setupModeAndMaps();
 
         //TODO: include star marine after leaderboard-fix (ranking currently by time only)
-        for (int i = 40; i <= 45; i++) {
+        // season 36 = SC Alpha 3.16 - start of ranking per map
+        for (int i = 36; i <= 45; i++) {
             String season = String.valueOf(i);
             for (String mode : modesAndMAps.keySet()) {
                 List<Score> tempScores = new ArrayList<>();
@@ -78,7 +79,7 @@ public class Main {
                 Score existingScore = aggregation.get(score.getHandle());
                 if (Double.parseDouble(existingScore.getRank()) > Double.parseDouble(score.getRank())){
                     Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime());
-                    aggregation.put(score.getHandle(), score);
+                    aggregation.put(score.getHandle(), newScore);
                 }
             }
             else {
