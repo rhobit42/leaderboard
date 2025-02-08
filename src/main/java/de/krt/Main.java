@@ -3,6 +3,7 @@ package de.krt;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -15,6 +16,9 @@ import org.json.JSONObject;
 public class Main {
     private static final String URL = "https://robertsspaceindustries.com/api/leaderboards/getLeaderboard";
 
+    private static final int SEASON_START = 46;
+    private static final int SEASON_END = 46;
+
     public static void main(String[] args) {
         //setup
         List<Score> scores = new ArrayList<>();
@@ -23,7 +27,7 @@ public class Main {
 
         //TODO: include star marine after leaderboard-fix (ranking currently by time only)
         // season 36 = SC Alpha 3.16 - start of ranking per map
-        for (int i = 36; i <= 45; i++) {
+        for (int i = SEASON_START; i == SEASON_END; i++) {
             String season = String.valueOf(i);
             for (String mode : modesAndMAps.keySet()) {
                 List<Score> tempScores = new ArrayList<>();
@@ -101,7 +105,7 @@ public class Main {
             JSONObject entry = resultSet.getJSONObject(i);
             String handle = entry.getString("nickname");
             String rank = entry.getString("rank");
-            int time = Score.getMillies(getJsonAsString(entry, "flight_time"));
+            int time = Score.getMillies(getJsonValueAsString(entry, "flight_time"));
             scores.add(new Score(handle, season, mode, map, rank, time));
         }
     }
@@ -172,21 +176,7 @@ public class Main {
     private static String getLeaderbordData(String season, String mode, String map) {
         String response = "";
         try {
-            URL url = new URI(URL).toURL();
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-            // The payload that you want to send
-            String payload = STR."{\"mode\": \"\{mode}\", \"map\": \"\{map}\", \"sort\": \"rank_score\", \"org\": \"KRT\", \"type\": \"Account\", \"season\": \"\{season}\", \"page\": \"1\", \"pagesize\": \"100\", \"type\" : \"Account\"}\n";
-
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json; utf-8");
-            conn.setRequestProperty("Accept", "application/json");
-            conn.setDoOutput(true);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = payload.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
+            HttpURLConnection conn = getHttpURLConnection(season, mode, map);
 
             // Read the response
             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -206,7 +196,26 @@ public class Main {
         return response;
     }
 
-    private static String getJsonAsString(JSONObject json, String key) {
+    private static HttpURLConnection getHttpURLConnection(String season, String mode, String map) throws URISyntaxException, IOException {
+        URL url = new URI(URL).toURL();
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+        // The payload that you want to send
+        String payload = STR."{\"mode\": \"\{mode}\", \"map\": \"\{map}\", \"sort\": \"rank_score\", \"org\": \"KRT\", \"type\": \"Account\", \"season\": \"\{season}\", \"page\": \"1\", \"pagesize\": \"100\", \"type\" : \"Account\"}\n";
+
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json; utf-8");
+        conn.setRequestProperty("Accept", "application/json");
+        conn.setDoOutput(true);
+
+        try (OutputStream os = conn.getOutputStream()) {
+            byte[] input = payload.getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+        return conn;
+    }
+
+    private static String getJsonValueAsString(JSONObject json, String key) {
         Object value = json.get(key);
         if (value instanceof Integer) {
             return Integer.toString((Integer) value);
