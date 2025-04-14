@@ -16,8 +16,9 @@ import org.json.JSONObject;
 public class Main {
     private static final String URL = "https://robertsspaceindustries.com/api/leaderboards/getLeaderboard";
 
-    private static final int SEASON_START = 46;
-    private static final int SEASON_END = 46;
+    // 47 = 4.0.1
+    private static final int SEASON_START = 47;
+    private static final int SEASON_END = 47;
 
     public static void main(String[] args) {
         //setup
@@ -43,8 +44,10 @@ public class Main {
                 // aggregate scores according to mode characteristics
                 if (mode.equals("SB") || mode.equals("DL"))
                     aggregateScoresByTimeWeightedMean(tempScores, tempAggregatedScores);
-                if (mode.equals("VS") || mode.equals("PS") || mode.equals("CR") || mode.equals("GR"))
+                if (mode.equals("VS") || mode.equals("PS"))
                     aggregateScoresByBestRank(tempScores, tempAggregatedScores);
+                if (mode.equals("CR") || mode.equals("GR"))
+                    aggregateScoresByBestRankAndMap(tempScores, tempAggregatedScores);
 
                 // gather all results
                 scores.addAll(tempScores);
@@ -96,6 +99,26 @@ public class Main {
         }
     }
 
+    private static void aggregateScoresByBestRankAndMap(List<Score> scores, List<Score> aggregateScores) {
+        Map<String, Score> aggregation = new HashMap<>();
+        for (Score score : scores){
+            if(aggregation.containsKey(score.getHandle().concat(score.getMap()))){
+                Score existingScore = aggregation.get(score.getHandle());
+                if (Double.parseDouble(existingScore.getRank().concat(existingScore.getMap())) > Double.parseDouble(score.getRank().concat(score.getMap()))){
+                    Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime());
+                    aggregation.put(score.getHandle().concat(score.getMap()), newScore);
+                }
+            }
+            else {
+                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime());
+                aggregation.put(score.getHandle().concat(score.getMap()), newScore);
+            }
+        }
+        for(String handle : aggregation.keySet()) {
+            aggregateScores.add(aggregation.get(handle));
+        }
+    }
+
     private static void parseResponse(String response, List<Score> scores, String mode, String map, String season) {
         JSONObject json = new JSONObject(response);
         JSONObject data = json.getJSONObject("data");
@@ -114,29 +137,29 @@ public class Main {
         try {
             FileWriter csvWriter = new FileWriter(filename + ".csv");
             csvWriter.append("season");
-            csvWriter.append(",");
+            csvWriter.append(";");
             csvWriter.append("mode");
-            csvWriter.append(",");
+            csvWriter.append(";");
             csvWriter.append("map");
-            csvWriter.append(",");
+            csvWriter.append(";");
             csvWriter.append("handle");
-            csvWriter.append(",");
+            csvWriter.append(";");
             csvWriter.append("rank");
-            csvWriter.append(",");
+            csvWriter.append(";");
             csvWriter.append("time");
             csvWriter.append("\n");
 
             for (Score score : scores) {
                 csvWriter.append(score.getSeason());
-                csvWriter.append(",");
+                csvWriter.append(";");
                 csvWriter.append(score.getMode());
-                csvWriter.append(",");
+                csvWriter.append(";");
                 csvWriter.append(score.getMap());
-                csvWriter.append(",");
+                csvWriter.append(";");
                 csvWriter.append(score.getHandle());
-                csvWriter.append(",");
+                csvWriter.append(";");
                 csvWriter.append(score.getRank().replace(".",","));
-                csvWriter.append(",");
+                csvWriter.append(";");
                 csvWriter.append(Score.getTimeFormat(score.getTime()));
                 csvWriter.append("\n");
             }
@@ -154,7 +177,12 @@ public class Main {
         Map<String,List<String>> modesAndMap = new HashMap<>();
 
         //Arena Commander Maps
-        List<String> maps = List.of("BROKEN-MOON", "DYING-STAR", "KAREAH", "JERICHO-STATION", "ARENA");
+        List<String> maps = List.of(
+                "BROKEN-MOON"
+                , "DYING-STAR"
+                , "KAREAH"
+                , "JERICHO-STATION"
+                , "ARENA");
         //DUEL
         modesAndMap.put("DL", maps);
         //Squadron Battle
@@ -166,9 +194,29 @@ public class Main {
 
         //Racing Maps
         //Classic Race
-        modesAndMap.put("CR", List.of("NHS-OLD-VANDERVAL","NHS-RIKKORD", "NHS-DEFFORD-LINK"));
+        modesAndMap.put("CR", List.of(
+                "NHS-OLD-VANDERVAL"
+                , "NHS-RIKKORD"
+                , "NHS-DEFFORD-LINK"
+                , "NHS-HALLORAN"
+                , "CAPLAN-CIRCUIT"
+                , "DUNLOW-DERBY"
+                , "ICEBREAKER"
+                , "LORVILLE-OUTSKIRTS"
+                , "MINERS-LAMENT"
+                , "THE-SKY-SCRAPER"
+                , "YADAR-VALLEY"
+                , "PYRO-JUMP"
+                , "SNAKE-PIT"
+        ));
         //Grav Race
-        modesAndMap.put("GR", List.of("SNAKE-PIT","SNAKE-PIT-REVERSE", "CLIO-ISLANDS", "SHIFTING-SANDS", "RIVERS-EDGE"));
+        modesAndMap.put("GR", List.of(
+                "SNAKE-PIT"
+                , "SNAKE-PIT-REVERSE"
+                , "CLIO-ISLANDS"
+                , "SHIFTING-SANDS"
+                , "RIVERS-EDGE"
+        ));
 
         return modesAndMap;
     }
