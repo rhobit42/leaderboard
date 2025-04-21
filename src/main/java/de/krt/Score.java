@@ -13,12 +13,13 @@ public class Score {
     private String map;
     private String rank;
     private int time;
-    private final DecimalFormatSymbols symbols;
+    private int raceTime;
+    private int bestRaceTime;
     private final DecimalFormat df;
     public static int ERROR_VALUE = 999999999;
 
-    public Score(String handle, String season, String mode, String map, String rank, int time){
-        symbols = new DecimalFormatSymbols(Locale.getDefault());
+    public Score(String handle, String season, String mode, String map, String rank, int time, int raceTime, int bestRaceTime){
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.getDefault());
         symbols.setDecimalSeparator('.');
         df = new DecimalFormat("#.00", symbols);
         setHandle(handle);
@@ -27,6 +28,8 @@ public class Score {
         setMap(map);
         setRank(df.format(Double.parseDouble(rank)));
         setTime(time);
+        setRaceTime(raceTime);
+        setBestRaceTime(bestRaceTime);
     }
 
     public static int getMillies(String time){
@@ -34,6 +37,21 @@ public class Score {
             return ERROR_VALUE;
         }
         return LocalTime.parse(time).toSecondOfDay();
+    }
+
+    public static int getMilliesForRace(String time){
+        String[] parts = time.split("\\.");
+        String secondsPart = parts[0];
+        String milliPart = parts.length > 1 ? parts[1] : "0";
+        while (milliPart.length() < 3) {
+            milliPart += "0";
+        }
+        long millis = Long.parseLong(milliPart);
+
+        String[] secondParts = secondsPart.split(":");
+        long minutes = Long.parseLong(secondParts[0]);
+        long seconds = Long.parseLong(secondParts.length > 1 ? secondParts[1] : "0");
+        return (int) (minutes * 60 + seconds + millis / 1000.0);
     }
 
     public static String getTimeFormat(int time){
@@ -88,6 +106,18 @@ public class Score {
     public void setTime(int time) {
         this.time = time;
     }
+
+    public int getRaceTime() { return raceTime; }
+
+    public void setRaceTime(int raceTime) { this.raceTime = raceTime; }
+
+    public int getBestRaceTime() { return bestRaceTime; }
+
+    public void setBestRaceTime(int bestRaceTime) { this.bestRaceTime = bestRaceTime; }
+
+    public int getRaceTimeRatio() { return Double.valueOf(getBestRaceTime() * 1.25).intValue(); }
+
+    public boolean isRaceTimeRationInInterval() { return getRaceTime() > 0 && (1.25 * getBestRaceTime()) >= getRaceTime(); }
 
     public void adjustRank(String rank, int time){
         double newRank = ((Double.parseDouble(getRank()) * getTime()) + (Double.parseDouble(rank) * time))

@@ -27,7 +27,6 @@ public class Main {
         Map<String, List<String>> modesAndMAps = setupModeAndMaps();
 
         //TODO: include star marine after leaderboard-fix (ranking currently by time only)
-        // season 36 = SC Alpha 3.16 - start of ranking per map
         for (int i = SEASON_START; i == SEASON_END; i++) {
             String season = String.valueOf(i);
             for (String mode : modesAndMAps.keySet()) {
@@ -37,8 +36,13 @@ public class Main {
 
                 // query leaderboard data
                 for (String map : maps) {
-                    String response = getLeaderbordData(season, mode, map);
-                    parseResponse(response, tempScores, mode, map, season);
+                    // get best race time for first place
+                    String response = getLeaderbordData(season, mode, map, 1, false);
+                    int bestTime = parseResponseForFirst(response);
+                    //get individual leaderboard-data
+                    response = getLeaderbordData(season, mode, map, 25, true);
+                    parseResponse(response, tempScores, mode, map, season, bestTime);
+
                 }
 
                 // aggregate scores according to mode characteristics
@@ -47,7 +51,7 @@ public class Main {
                 if (mode.equals("VS") || mode.equals("PS"))
                     aggregateScoresByBestRank(tempScores, tempAggregatedScores);
                 if (mode.equals("CR") || mode.equals("GR"))
-                    aggregateScoresByBestRankAndMap(tempScores, tempAggregatedScores);
+                    aggregateScoresByBestRankAndRatio(tempScores, tempAggregatedScores);
 
                 // gather all results
                 scores.addAll(tempScores);
@@ -70,7 +74,7 @@ public class Main {
                 existingScore.adjustRank(score.getRank(), score.getTime());
             }
             else {
-                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), STR."\{score.getMode()}-ALL", score.getRank(), score.getTime());
+                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), STR."\{score.getMode()}-ALL", score.getRank(), score.getTime(), score.getRaceTime(), score.getBestRaceTime());
                 aggregation.put(score.getHandle(), newScore);
             }
         }
@@ -85,12 +89,12 @@ public class Main {
             if(aggregation.containsKey(score.getHandle())){
                 Score existingScore = aggregation.get(score.getHandle());
                 if (Double.parseDouble(existingScore.getRank()) > Double.parseDouble(score.getRank())){
-                    Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime());
+                    Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime(),score.getRaceTime(), score.getBestRaceTime());
                     aggregation.put(score.getHandle(), newScore);
                 }
             }
             else {
-                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime());
+                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime(), score.getRaceTime(), score.getBestRaceTime());
                 aggregation.put(score.getHandle(), newScore);
             }
         }
@@ -99,18 +103,18 @@ public class Main {
         }
     }
 
-    private static void aggregateScoresByBestRankAndMap(List<Score> scores, List<Score> aggregateScores) {
+    private static void aggregateScoresByBestRankAndRatio(List<Score> scores, List<Score> aggregateScores) {
         Map<String, Score> aggregation = new HashMap<>();
         for (Score score : scores){
             if(aggregation.containsKey(score.getHandle().concat(score.getMap()))){
-                Score existingScore = aggregation.get(score.getHandle());
-                if (Double.parseDouble(existingScore.getRank().concat(existingScore.getMap())) > Double.parseDouble(score.getRank().concat(score.getMap()))){
-                    Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime());
+                Score existingScore = aggregation.get(score.getHandle().concat(score.getMap()));
+                if (Double.parseDouble(existingScore.getRank()) > Double.parseDouble(score.getRank())){
+                    Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime(), score.getRaceTime(), score.getBestRaceTime());
                     aggregation.put(score.getHandle().concat(score.getMap()), newScore);
                 }
             }
             else {
-                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime());
+                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMap(), score.getRank(), score.getTime(), score.getRaceTime(), score.getBestRaceTime());
                 aggregation.put(score.getHandle().concat(score.getMap()), newScore);
             }
         }
@@ -119,7 +123,7 @@ public class Main {
         }
     }
 
-    private static void parseResponse(String response, List<Score> scores, String mode, String map, String season) {
+    private static void parseResponse(String response, List<Score> scores, String mode, String map, String season, int bestTime) {
         JSONObject json = new JSONObject(response);
         JSONObject data = json.getJSONObject("data");
         JSONArray resultSet = data.getJSONArray("resultset");
@@ -129,8 +133,22 @@ public class Main {
             String handle = entry.getString("nickname");
             String rank = entry.getString("rank");
             int time = Score.getMillies(getJsonValueAsString(entry, "flight_time"));
-            scores.add(new Score(handle, season, mode, map, rank, time));
+            int raceTime = Score.getMilliesForRace(getJsonValueAsString(entry, "best_race"));
+            scores.add(new Score(handle, season, mode, map, rank, time, raceTime, bestTime));
         }
+    }
+
+    private static int parseResponseForFirst(String response) {
+        int time = 0;
+        JSONObject json = new JSONObject(response);
+        JSONObject data = json.getJSONObject("data");
+        JSONArray resultSet = data.getJSONArray("resultset");
+
+        for (int i = 0; i < resultSet.length(); i++) {
+            JSONObject entry = resultSet.getJSONObject(i);
+            time = Score.getMilliesForRace(getJsonValueAsString(entry, "best_race"));
+        }
+        return time;
     }
 
     private static void writeToCSV(List<Score> scores, String filename) {
@@ -147,6 +165,14 @@ public class Main {
             csvWriter.append("rank");
             csvWriter.append(";");
             csvWriter.append("time");
+            csvWriter.append(";");
+            csvWriter.append("raceTime");
+            csvWriter.append(";");
+            csvWriter.append("bestRaceTime");
+            csvWriter.append(";");
+            csvWriter.append("ratio");
+            csvWriter.append(";");
+            csvWriter.append("raceTimeInRatio");
             csvWriter.append("\n");
 
             for (Score score : scores) {
@@ -161,6 +187,14 @@ public class Main {
                 csvWriter.append(score.getRank().replace(".",","));
                 csvWriter.append(";");
                 csvWriter.append(Score.getTimeFormat(score.getTime()));
+                csvWriter.append(";");
+                csvWriter.append(Score.getTimeFormat(score.getRaceTime()));
+                csvWriter.append(";");
+                csvWriter.append(Score.getTimeFormat(score.getBestRaceTime()));
+                csvWriter.append(";");
+                csvWriter.append(Score.getTimeFormat(score.getRaceTimeRatio()));
+                csvWriter.append(";");
+                csvWriter.append(Boolean.valueOf(score.isRaceTimeRationInInterval()).toString());
                 csvWriter.append("\n");
             }
 
@@ -221,10 +255,10 @@ public class Main {
         return modesAndMap;
     }
 
-    private static String getLeaderbordData(String season, String mode, String map) {
+    private static String getLeaderbordData(String season, String mode, String map, int topX, boolean krtOnly) {
         String response = "";
         try {
-            HttpURLConnection conn = getHttpURLConnection(season, mode, map);
+            HttpURLConnection conn = getHttpURLConnection(season, mode, map, topX, krtOnly);
 
             // Read the response
             BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -244,12 +278,16 @@ public class Main {
         return response;
     }
 
-    private static HttpURLConnection getHttpURLConnection(String season, String mode, String map) throws URISyntaxException, IOException {
+    private static HttpURLConnection getHttpURLConnection(String season, String mode, String map, int topX, boolean krtOnly) throws URISyntaxException, IOException {
         URL url = new URI(URL).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         // The payload that you want to send
-        String payload = STR."{\"mode\": \"\{mode}\", \"map\": \"\{map}\", \"sort\": \"rank_score\", \"org\": \"KRT\", \"type\": \"Account\", \"season\": \"\{season}\", \"page\": \"1\", \"pagesize\": \"100\", \"type\" : \"Account\"}\n";
+        String payload;
+        if(krtOnly)
+            payload = getLeaderboarURLForKRT(season, mode, map, topX);
+        else
+            payload = getLeaderboarURL(season, mode, map, topX);
 
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json; utf-8");
@@ -261,6 +299,14 @@ public class Main {
             os.write(input, 0, input.length);
         }
         return conn;
+    }
+
+    private static String getLeaderboarURLForKRT(String season, String mode, String map, int topX) {
+        return STR."{\"mode\": \"\{mode}\", \"map\": \"\{map}\", \"sort\": \"rank_score\", \"org\": \"KRT\", \"type\": \"Account\", \"season\": \"\{season}\", \"page\": \"1\", \"pagesize\": \"\{topX}\"}\n";
+    }
+
+    private static String getLeaderboarURL(String season, String mode, String map, int topX) {
+        return STR."{\"mode\": \"\{mode}\", \"map\": \"\{map}\", \"sort\": \"rank_score\", \"type\": \"Account\", \"season\": \"\{season}\", \"page\": \"1\", \"pagesize\": \"\{topX}\"}\n";
     }
 
     private static String getJsonValueAsString(JSONObject json, String key) {
