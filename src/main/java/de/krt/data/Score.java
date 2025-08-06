@@ -1,4 +1,4 @@
-package de.krt;
+package de.krt.data;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -7,6 +7,7 @@ import java.time.LocalTime;
 import java.util.Locale;
 
 public class Score {
+    private final double ratio = 1.25;
     private String handle;
     private String season;
     private String mode;
@@ -42,11 +43,11 @@ public class Score {
     public static int getMilliesForRace(String time){
         String[] parts = time.split("\\.");
         String secondsPart = parts[0];
-        String milliPart = parts.length > 1 ? parts[1] : "0";
+        StringBuilder milliPart = new StringBuilder(parts.length > 1 ? parts[1] : "0");
         while (milliPart.length() < 3) {
-            milliPart += "0";
+            milliPart.append("0");
         }
-        long millis = Long.parseLong(milliPart);
+        long millis = Long.parseLong(milliPart.toString());
 
         String[] secondParts = secondsPart.split(":");
         long minutes = Long.parseLong(secondParts[0]);
@@ -115,10 +116,15 @@ public class Score {
 
     public void setBestRaceTime(int bestRaceTime) { this.bestRaceTime = bestRaceTime; }
 
-    public int getRaceTimeRatio() { return Double.valueOf(getBestRaceTime() * 1.25).intValue(); }
+    public int getRaceTimeRatio() { return Double.valueOf(getBestRaceTime() * ratio).intValue(); }
 
-    public boolean isRaceTimeRationInInterval() { return getRaceTime() > 0 && (1.25 * getBestRaceTime()) >= getRaceTime(); }
+    public boolean isRaceTimeRationInInterval() { return getRaceTime() > 0 && (ratio * getBestRaceTime()) >= getRaceTime(); }
 
+    /**
+     * Add a new rank, weighted my time, to the currently hold rank
+     * @param rank the rank
+     * @param time the time
+     */
     public void adjustRank(String rank, int time){
         double newRank = ((Double.parseDouble(getRank()) * getTime()) + (Double.parseDouble(rank) * time))
                 / (getTime() + time);

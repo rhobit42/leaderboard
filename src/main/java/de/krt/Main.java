@@ -8,6 +8,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import de.krt.config.Maps;
+import de.krt.config.Season;
+import de.krt.data.Score;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -16,15 +19,14 @@ import org.json.JSONObject;
 public class Main {
     private static final String URL = "https://robertsspaceindustries.com/api/leaderboards/getLeaderboard";
 
-    // 47 = 4.0.1
-    private static final int SEASON_START = 47;
-    private static final int SEASON_END = 47;
-
     public static void main(String[] args) {
         //setup
         List<Score> scores = new ArrayList<>();
         List<Score> aggregatedScores = new ArrayList<>();
-        Map<String, List<String>> modesAndMAps = setupModeAndMaps();
+        Map<String, List<String>> modesAndMAps = Maps.setupModeAndMaps();
+
+        int SEASON_START = Season.PATCH_4_0_1.getSeason();
+        int SEASON_END = Season.PATCH_4_0_1.getSeason();
 
         //TODO: include star marine after leaderboard-fix (ranking currently by time only)
         for (int i = SEASON_START; i == SEASON_END; i++) {
@@ -38,7 +40,7 @@ public class Main {
                 for (String map : maps) {
                     // get best race time for first place
                     String response = getLeaderbordData(season, mode, map, 1, false);
-                    int bestTime = parseResponseForFirst(response);
+                    int bestTime = parseResponseForBestTime(response);
                     //get individual leaderboard-data
                     response = getLeaderbordData(season, mode, map, 25, true);
                     parseResponse(response, tempScores, mode, map, season, bestTime);
@@ -51,7 +53,7 @@ public class Main {
                 if (mode.equals("VS") || mode.equals("PS"))
                     aggregateScoresByBestRank(tempScores, tempAggregatedScores);
                 if (mode.equals("CR") || mode.equals("GR"))
-                    aggregateScoresByBestRankAndRatio(tempScores, tempAggregatedScores);
+                    aggregateScoresByBestRankAndMap(tempScores, tempAggregatedScores);
 
                 // gather all results
                 scores.addAll(tempScores);
@@ -62,6 +64,11 @@ public class Main {
         writeToCSV(scores, "lb_full");
     }
 
+    /**
+     * Scores are aggregated and stored into a list of aggregated scores, weighted by time
+     * @param scores the scores to aggregate
+     * @param aggregateScores the list of aggregated scores
+     */
     private static void aggregateScoresByTimeWeightedMean(List<Score> scores, List<Score> aggregateScores) {
         Map<String, Score> aggregation = new HashMap<>();
         for (Score score : scores){
@@ -83,6 +90,11 @@ public class Main {
         }
     }
 
+    /**
+     * Scores are stored into a list of scores, only the best score is kept
+     * @param scores the scores to aggregate
+     * @param aggregateScores the list of aggregated scores
+     */
     private static void aggregateScoresByBestRank(List<Score> scores, List<Score> aggregateScores) {
         Map<String, Score> aggregation = new HashMap<>();
         for (Score score : scores){
@@ -103,7 +115,12 @@ public class Main {
         }
     }
 
-    private static void aggregateScoresByBestRankAndRatio(List<Score> scores, List<Score> aggregateScores) {
+    /**
+     * Scores are stored into a list of scores, the best score per map is kept
+     * @param scores the scores to aggregate
+     * @param aggregateScores the list of aggregated scores
+     */
+    private static void aggregateScoresByBestRankAndMap(List<Score> scores, List<Score> aggregateScores) {
         Map<String, Score> aggregation = new HashMap<>();
         for (Score score : scores){
             if(aggregation.containsKey(score.getHandle().concat(score.getMap()))){
@@ -123,6 +140,15 @@ public class Main {
         }
     }
 
+    /**
+     * Parse a data object  for best time an race time
+     * @param response the data object
+     * @param scores a list containing the parsed scores
+     * @param mode a mode to add to the score
+     * @param map a map to add to the score
+     * @param season a season to add to the score
+     * @param bestTime a best time to add to the score
+     */
     private static void parseResponse(String response, List<Score> scores, String mode, String map, String season, int bestTime) {
         JSONObject json = new JSONObject(response);
         JSONObject data = json.getJSONObject("data");
@@ -138,7 +164,12 @@ public class Main {
         }
     }
 
-    private static int parseResponseForFirst(String response) {
+    /**
+     * Parses a data object for the globally best time in milliseconds
+     * @param response the data object
+     * @return time in milliseconds
+     */
+    private static int parseResponseForBestTime(String response) {
         int time = 0;
         JSONObject json = new JSONObject(response);
         JSONObject data = json.getJSONObject("data");
@@ -205,54 +236,6 @@ public class Main {
         } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
-    }
-
-    private static Map<String,List<String>> setupModeAndMaps() {
-        Map<String,List<String>> modesAndMap = new HashMap<>();
-
-        //Arena Commander Maps
-        List<String> maps = List.of(
-                "BROKEN-MOON"
-                , "DYING-STAR"
-                , "KAREAH"
-                , "JERICHO-STATION"
-                , "ARENA");
-        //DUEL
-        modesAndMap.put("DL", maps);
-        //Squadron Battle
-        modesAndMap.put("SB", maps);
-        //Vanduul Swarm
-        modesAndMap.put("VS", maps);
-        //Pirate Swarm
-        modesAndMap.put("PS", maps);
-
-        //Racing Maps
-        //Classic Race
-        modesAndMap.put("CR", List.of(
-                "NHS-OLD-VANDERVAL"
-                , "NHS-RIKKORD"
-                , "NHS-DEFFORD-LINK"
-                , "NHS-HALLORAN"
-                , "CAPLAN-CIRCUIT"
-                , "DUNLOW-DERBY"
-                , "ICEBREAKER"
-                , "LORVILLE-OUTSKIRTS"
-                , "MINERS-LAMENT"
-                , "THE-SKY-SCRAPER"
-                , "YADAR-VALLEY"
-                , "PYRO-JUMP"
-                , "SNAKE-PIT"
-        ));
-        //Grav Race
-        modesAndMap.put("GR", List.of(
-                "SNAKE-PIT"
-                , "SNAKE-PIT-REVERSE"
-                , "CLIO-ISLANDS"
-                , "SHIFTING-SANDS"
-                , "RIVERS-EDGE"
-        ));
-
-        return modesAndMap;
     }
 
     private static String getLeaderbordData(String season, String mode, String map, int topX, boolean krtOnly) {
