@@ -30,10 +30,8 @@ public class Main {
 
         //TODO: include star marine after leaderboard-fix (ranking currently by time only)
         for (int i = SEASON_START; i == SEASON_END; i++) {
-            System.out.println(STR."> Start processing season \{SEASON_START}, last season will be \{SEASON_END}.");
             String season = String.valueOf(i);
             for (String mode : modesAndMAps.keySet()) {
-                System.out.println(STR.">> Process mode \{mode}.");
                 List<Score> tempScores = new ArrayList<>();
                 List<Score> tempAggregatedScores = new ArrayList<>();
                 List<String> maps = modesAndMAps.get(mode);
@@ -83,7 +81,7 @@ public class Main {
                 existingScore.adjustRank(score.getRank(), score.getTime());
             }
             else {
-                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), STR."\{score.getMode()}-ALL", score.getRank(), score.getTime(), score.getRaceTime(), score.getBestRaceTime());
+                Score newScore = new Score(score.getHandle(), score.getSeason(), score.getMode(), score.getMode()+"-ALL", score.getRank(), score.getTime(), score.getRaceTime(), score.getBestRaceTime());
                 aggregation.put(score.getHandle(), newScore);
             }
         }
@@ -287,11 +285,11 @@ public class Main {
     }
 
     private static String getLeaderboarURLForKRT(String season, String mode, String map, int topX) {
-        return STR."{\"mode\": \"\{mode}\", \"map\": \"\{map}\", \"sort\": \"rank_score\", \"org\": \"KRT\", \"type\": \"Account\", \"season\": \"\{season}\", \"page\": \"1\", \"pagesize\": \"\{topX}\"}\n";
+        return "{\"mode\": \""+mode+"\", \"map\": \""+map+"\", \"sort\": \"rank_score\", \"org\": \"KRT\", \"type\": \"Account\", \"season\": \""+season+"\", \"page\": \"1\", \"pagesize\": \""+topX+"\"}\n";
     }
 
     private static String getLeaderboarURL(String season, String mode, String map, int topX) {
-        return STR."{\"mode\": \"\{mode}\", \"map\": \"\{map}\", \"sort\": \"rank_score\", \"type\": \"Account\", \"season\": \"\{season}\", \"page\": \"1\", \"pagesize\": \"\{topX}\"}\n";
+        return "{\"mode\": \""+mode+"\", \"map\": \""+map+"\", \"sort\": \"rank_score\", \"type\": \"Account\", \"season\": \""+season+"\", \"page\": \"1\", \"pagesize\": \""+topX+"\"}\n";
     }
 
     private static String getJsonValueAsString(JSONObject json, String key) {
