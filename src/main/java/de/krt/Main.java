@@ -30,8 +30,10 @@ public class Main {
 
         //TODO: include star marine after leaderboard-fix (ranking currently by time only)
         for (int i = SEASON_START; i == SEASON_END; i++) {
+            System.out.println(STR."> Start processing season \{SEASON_START}, last season will be \{SEASON_END}.");
             String season = String.valueOf(i);
             for (String mode : modesAndMAps.keySet()) {
+                System.out.println(STR.">> Process mode \{mode}.");
                 List<Score> tempScores = new ArrayList<>();
                 List<Score> tempAggregatedScores = new ArrayList<>();
                 List<String> maps = modesAndMAps.get(mode);
